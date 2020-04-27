@@ -70,7 +70,6 @@ RUN set -ex \
  && scons install \
  && cp docker/isce_env.sh $ISCE_INSTALL_ROOT \
  && cd /tmp \
- && rm -rf /opt/isce2/src \
  && mkdir -p /tmp/rpm-build/opt \
  && mv $ISCE_INSTALL_ROOT /tmp/rpm-build/opt \
  && curl -s https://api.github.com/repos/$ISCE_ORG/isce2/git/refs/heads/master \
@@ -118,3 +117,13 @@ RUN set -ex \
  && sudo yum clean all \
  && sudo rm -rf /var/cache/yum \
  && sudo rm /tmp/isce-2.3-1.x86_64.rpm
+
+
+ENV PYTHONPATH=/opt/isce2:$PYTHONPATH
+ENV ISCE_HOME=/opt/isce2/isce
+ENV PATH=$ISCE_HOME/applications:$ISCE_HOME/bin:/opt/conda/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/conda/lib:$LD_LIBRARY_PATH
+ENV GDAL_DATA=/opt/conda/share/gdal
+ENV ISCE_STACK=/opt/isce2/src/isce2/contrib/stack/topsStack/:/opt/isce2/src/isce2/contrib/stack/stripmapStack/
+ENV PATH=$PATH:$ISCE_STACK
+
