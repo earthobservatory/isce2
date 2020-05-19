@@ -1,4 +1,4 @@
-FROM hysds/dev:latest
+FROM hysds/dev:develop-es1
 
 # Set an encoding to make things work smoothly.
 ENV LANG en_US.UTF-8
@@ -82,7 +82,7 @@ RUN set -ex \
       --maintainer=piyush.agram@jpl.nasa.gov \
       --description="InSAR Scientific Computing Environment v2 (${hash})"
 
-FROM hysds/pge-base:latest
+FROM hysds/pge-base:develop-es1
 
 # Set an encoding to make things work smoothly.
 ENV LANG en_US.UTF-8
