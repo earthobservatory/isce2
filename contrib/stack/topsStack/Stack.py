@@ -889,7 +889,8 @@ class sentinelSLC(object):
 
         self.SNWE=[min(lats),max(lats),min(lons),max(lons)]
 
-    def get_orbit(self, orbitDir, workDir):
+    def get_orbit(self, orbitDir, workDir, margin=60.0):
+        margin = datetime.timedelta(seconds=margin)
         datefmt = "%Y%m%dT%H%M%S"
         orbit_files = glob.glob(os.path.join(orbitDir,  self.platform + '*.EOF'))
         if len(orbit_files) == 0:
@@ -897,14 +898,21 @@ class sentinelSLC(object):
 
         match = False
         for orbit in orbit_files:
+           import copy
+           orbit_fullpath = copy.deepcopy(orbit)
            orbit = os.path.basename(orbit)
            fields = orbit.split('_')
-           orbit_start_date_time = datetime.datetime.strptime(fields[6].replace('V',''), datefmt)
-           orbit_stop_date_time = datetime.datetime.strptime(fields[7].replace('.EOF',''), datefmt)
+           orbit_start_date_time = datetime.datetime.strptime(fields[6].replace('V',''), datefmt) + margin
+           orbit_stop_date_time = datetime.datetime.strptime(fields[7].replace('.EOF',''), datefmt) - margin
 
-           if self.start_date_time > orbit_start_date_time and self.start_date_time < orbit_stop_date_time:
-               self.orbit = os.path.join(orbitDir,orbit)
-               self.orbitType = 'precise'
+           if self.start_date_time >= orbit_start_date_time and self.stop_date_time < orbit_stop_date_time:
+               self.orbit = orbit_fullpath
+               self.orbitType = 'restituted'
+               #if "RESORB" in self.orbit:
+               #    self.orbitType = 'restituted'
+               #else:
+               #    self.orbit = os.path.join(orbitDir,orbit)
+               #    self.orbitType = 'precise'
                match = True
                break
         if not match:
@@ -921,7 +929,7 @@ class sentinelSLC(object):
               fields = os.path.basename(orbitFile).split('_')
               orbit_start_date_time = datetime.datetime.strptime(fields[6].replace('V',''), datefmt)
               orbit_stop_date_time = datetime.datetime.strptime(fields[7].replace('.EOF',''), datefmt)
-              if self.start_date_time > orbit_start_date_time and self.start_date_time < orbit_stop_date_time:
+              if self.start_date_time >= orbit_start_date_time and self.stop_date_time < orbit_stop_date_time:
                   print ("restituted orbit already exists.")
                   self.orbit =  orbitFile
                   self.orbitType = 'restituted'
