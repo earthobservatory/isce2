@@ -28,7 +28,24 @@ def cmdLineParse(iargs = None):
     parser = createParser()
     return parser.parse_args(args=iargs)
 
-def updateValidRegion(topMaster, slavePath, swath):
+def getGlobalValidBursts(topMaster,slaveList,swath):
+     # get the global common valid region across all slave + master dates
+    minGlobalList=[]
+    maxGlobalList=[]
+    minGlobalList.append(topMaster.bursts[0].burstNumber)
+    maxGlobalList.append(topMaster.bursts[-1].burstNumber)
+    for slave in slaveList:
+            topCoreg = ut.loadProduct(os.path.join(slavePath , 'IW{0}.xml'.format(swath)))
+            minGlobalList.append(topCoreg.bursts[0].burstNumber)
+            maxGlobalList.append(topCoreg.bursts[-1].burstNumber)
+
+    minGlobalBurst = max(minGlobalList)
+    maxGlobalBurst = min(maxGlobalList)
+
+    return minGlobalBurst,maxGlobalBurst
+
+
+def updateValidRegion(topMaster, slavePath, swath, rangeGlobalBurst=None):
 
     #slaveSwathList = ut.getSwathList(slave)
     #swathList = list(sorted(set(masterSwathList+slaveSwathList)))
@@ -50,8 +67,11 @@ def updateValidRegion(topMaster, slavePath, swath):
     minSlave = topCoreg.bursts[0].burstNumber
     maxSlave = topCoreg.bursts[-1].burstNumber
 
-    minBurst = max(minSlave, minMaster)
-    maxBurst = min(maxSlave, maxMaster)
+    if rangeGlobalBurst:
+        minBurst, maxBurst = rangeGlobalBurst
+    else:
+        minBurst = max(minSlave, minMaster)
+        maxBurst = min(maxSlave, maxMaster)
     print ('minSlave,maxSlave',minSlave, maxSlave)
     print ('minMaster,maxMaster',minMaster, maxMaster)
     print ('minBurst, maxBurst: ', minBurst, maxBurst)
@@ -91,11 +111,13 @@ def main(iargs=None):
     for swath in swathList:
         print('******************')
         print('swath: ', swath)
+
         ####Load relevant products
         topMaster = ut.loadProduct(os.path.join(inps.master , 'IW{0}.xml'.format(swath)))
         #print('master.firstValidLine: ', topMaster.bursts[4].firstValidLine)
+        rangeGlobalBurst = getGlobalValidBursts(topMaster, slaveList, swath)
         for slave in slaveList:
-            topMaster = updateValidRegion(topMaster, slave, swath)
+            topMaster = updateValidRegion(topMaster, slave, swath, rangeGlobalBurst)
 
         print('writing ', os.path.join(stackDir , 'IW{0}.xml'.format(swath)))
         ut.saveProduct(topMaster, os.path.join(stackDir , 'IW{0}.xml'.format(swath)))
