@@ -35,7 +35,7 @@ def getGlobalValidBursts(topMaster,slaveList,swath):
     minGlobalList.append(topMaster.bursts[0].burstNumber)
     maxGlobalList.append(topMaster.bursts[-1].burstNumber)
     for slave in slaveList:
-            topCoreg = ut.loadProduct(os.path.join(slavePath , 'IW{0}.xml'.format(swath)))
+            topCoreg = ut.loadProduct(os.path.join(slave , 'IW{0}.xml'.format(swath)))
             minGlobalList.append(topCoreg.bursts[0].burstNumber)
             maxGlobalList.append(topCoreg.bursts[-1].burstNumber)
 
