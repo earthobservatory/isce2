@@ -44,8 +44,12 @@ def getGlobalValidBursts(topMaster,slaveList,swath):
 
     return minGlobalBurst,maxGlobalBurst
 
+def makeInvalidRegion(master):
+    # valid lines between master and slave
+    master.numValidLines = 1
+    master.numValidSamples = 1
 
-def updateValidRegion(topMaster, slavePath, swath, rangeGlobalBurst=None):
+def updateValidRegion(topMaster, slavePath, swath, rangeGlobalBurst):
 
     #slaveSwathList = ut.getSwathList(slave)
     #swathList = list(sorted(set(masterSwathList+slaveSwathList)))
@@ -72,6 +76,7 @@ def updateValidRegion(topMaster, slavePath, swath, rangeGlobalBurst=None):
     else:
         minBurst = max(minSlave, minMaster)
         maxBurst = min(maxSlave, maxMaster)
+
     print ('minSlave,maxSlave',minSlave, maxSlave)
     print ('minMaster,maxMaster',minMaster, maxMaster)
     print ('minBurst, maxBurst: ', minBurst, maxBurst)
@@ -115,9 +120,23 @@ def main(iargs=None):
         ####Load relevant products
         topMaster = ut.loadProduct(os.path.join(inps.master , 'IW{0}.xml'.format(swath)))
         #print('master.firstValidLine: ', topMaster.bursts[4].firstValidLine)
-        rangeGlobalBurst = getGlobalValidBursts(topMaster, slaveList, swath)
+        minBurst, maxBurst = getGlobalValidBursts(topMaster, slaveList, swath)
         for slave in slaveList:
-            topMaster = updateValidRegion(topMaster, slave, swath, rangeGlobalBurst)
+            topMaster = updateValidRegion(topMaster, slave, swath, (minBurst, maxBurst))
+
+        # check if master exceeds global range and by how much:
+        minMaster = topMaster.bursts[0].burstNumber
+        maxMaster = topMaster.bursts[-1].burstNumber
+        masterTopExceed = minBurst - minMaster
+        masterBotExceed = maxMaster - maxBurst
+
+        if masterTopExceed > 0:
+            for i in range(0, masterTopExceed):
+                makeInvalidRegion(topMaster.bursts[i])
+
+        if masterBotExceed > 0:
+            for j in range(-masterBotExceed, 0):
+                makeInvalidRegion(topMaster.bursts[j])
 
         print('writing ', os.path.join(stackDir , 'IW{0}.xml'.format(swath)))
         ut.saveProduct(topMaster, os.path.join(stackDir , 'IW{0}.xml'.format(swath)))
