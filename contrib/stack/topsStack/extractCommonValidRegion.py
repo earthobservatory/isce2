@@ -12,6 +12,7 @@ import isceobj
 from isceobj.Sensor.TOPS import createTOPSSwathSLCProduct
 from mroipac.correlation.correlation import Correlation
 import s1a_isce_utils as ut
+from iscesys.Component.TraitSeq import TraitSeq
 
 
 def createParser():
@@ -23,13 +24,39 @@ def createParser():
     parser.add_argument('-s', '--secondary', dest='secondary', type=str, required=True,
             help='Directory with secondary acquisition')
 
+    parser.add_argument('--follow-ref', dest='follow_ref', action='store_true',
+                        help=('If set, adhere common valid regions to reference only. Frames with more or less bursts than reference will be dropped. '
+                              'If not set, strict adherence to common regions across all reference and secondary acquisitions.'))
     return parser
 
 def cmdLineParse(iargs = None):
     parser = createParser()
     return parser.parse_args(args=iargs)
 
-def updateValidRegion(topReference, secondaryPath, swath):
+def getGlobalValidBursts(topReference,secondaryList,swath):
+     # get the global common valid region across all slave + master dates
+    minGlobalList=[]
+    maxGlobalList=[]
+    minGlobalList.append(topReference.bursts[0].burstNumber)
+    maxGlobalList.append(topReference.bursts[-1].burstNumber)
+    for secondary in secondaryList:
+            topCoreg = ut.loadProduct(os.path.join(secondary , 'IW{0}.xml'.format(swath)))
+            minGlobalList.append(topCoreg.bursts[0].burstNumber)
+            maxGlobalList.append(topCoreg.bursts[-1].burstNumber)
+
+    minGlobalBurst = max(minGlobalList)
+    maxGlobalBurst = min(maxGlobalList)
+
+    return minGlobalBurst,maxGlobalBurst
+
+
+def makeInvalidRegion(reference):
+    # valid lines between master and slave
+    reference.numValidLines = -1
+    reference.numValidSamples = -1
+
+
+def updateValidRegion(topReference, secondaryPath, swath, rangeGlobalBurst=None):
 
     #secondarySwathList = ut.getSwathList(secondary)
     #swathList = list(sorted(set(referenceSwathList+secondarySwathList)))
@@ -45,21 +72,23 @@ def updateValidRegion(topReference, secondaryPath, swath):
     topIfg = ut.coregSwathSLCProduct()
     topIfg.configure()
 
-
     minReference = topReference.bursts[0].burstNumber
     maxReference = topReference.bursts[-1].burstNumber
 
     minSecondary = topCoreg.bursts[0].burstNumber
     maxSecondary = topCoreg.bursts[-1].burstNumber
 
-    minBurst = max(minSecondary, minReference)
-    maxBurst = min(maxSecondary, maxReference)
+    if rangeGlobalBurst:
+        minBurst, maxBurst = rangeGlobalBurst
+    else:
+        minBurst = max(minSecondary, minReference)
+        maxBurst = min(maxSecondary, maxReference)
+        
     print ('minSecondary,maxSecondary',minSecondary, maxSecondary)
     print ('minReference,maxReference',minReference, maxReference)
     print ('minBurst, maxBurst: ', minBurst, maxBurst)
 
     for ii in range(minBurst, maxBurst + 1):
-
             ####Process the top bursts
         reference = topReference.bursts[ii-minReference]
         secondary  = topCoreg.bursts[ii-minSecondary]
@@ -117,8 +146,11 @@ def main(iargs=None):
     secondaryList = glob.glob(os.path.join(inps.secondary,'2*'))
     secondarySwathList = ut.getSwathList(secondaryList[0]) # assuming all secondarys have the same swaths
     swathList = list(sorted(set(referenceSwathList+secondarySwathList)))
-    # discard secondarys with different number of bursts than the reference
-    secondaryList = dropSecondarysWithDifferentNumberOfBursts(secondaryList, inps.reference, swathList)
+
+    if inps.follow_ref:
+        print('Following reference only for common valid region, dropping secondarys with different number of bursts than the reference if any.')
+        # discard secondarys with different number of bursts than the reference
+        secondaryList = dropSecondarysWithDifferentNumberOfBursts(secondaryList, inps.reference, swathList)
 
     for swath in swathList:
         print('******************')
@@ -126,8 +158,31 @@ def main(iargs=None):
         ####Load relevant products
         topReference = ut.loadProduct(os.path.join(inps.reference , 'IW{0}.xml'.format(swath)))
         #print('reference.firstValidLine: ', topReference.bursts[4].firstValidLine)
+        thisRangeGlobalBurst = None
+
+        if not inps.follow_ref:
+            print('Global intersection for common valid region over all acquistions.')
+            minGlobalBurst, maxGlobalBurst = getGlobalValidBursts(topReference, secondaryList, swath)
+            print('minGlobalBurst, maxGlobalBurst: ', minGlobalBurst, maxGlobalBurst)
+            thisRangeGlobalBurst = (minGlobalBurst, maxGlobalBurst)
+
         for secondary in secondaryList:
-            topReference = updateValidRegion(topReference, secondary, swath)
+            topReference = updateValidRegion(topReference, secondary, swath, rangeGlobalBurst=thisRangeGlobalBurst)
+
+        if thisRangeGlobalBurst:
+           # check if master exceeds global range and by how much:
+           minRef = topReference.bursts[0].burstNumber
+           maxRef = topReference.bursts[-1].burstNumber
+           refTopExceed = minGlobalBurst - minRef
+           refBotExceed = maxRef - maxGlobalBurst
+
+           if refTopExceed > 0:
+               for i in range(0, refTopExceed):
+                   makeInvalidRegion(topReference.bursts[i])
+
+           if refBotExceed > 0:
+               for j in range(-refBotExceed, 0):
+                   makeInvalidRegion(topReference.bursts[j])
 
         print('writing ', os.path.join(stackDir , 'IW{0}.xml'.format(swath)))
         ut.saveProduct(topReference, os.path.join(stackDir , 'IW{0}.xml'.format(swath)))
@@ -191,3 +246,4 @@ for ind, burst in enumerate(swath.bursts):
     #print(xoff, fxoff)
     print(yoff, fyoff)
 '''
+

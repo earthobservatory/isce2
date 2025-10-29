@@ -267,7 +267,10 @@ def main(iargs=None):
                 outimg = resampSecondary(topBurst, secBurst, rdict, outname, (not inps.noflat))
                 minAz, maxAz, minRg, maxRg = ut.getValidLines(secBurst, rdict, outname,
                     misreg_az = misreg_az - offset, misreg_rng = misreg_rg)
-
+                
+                if abs(minAz) > 50:
+                    # import pdb; pdb.set_trace()
+                    print(f"WARNING: Large line Offsets for burst {secBurst.catalog['image']['file_name']}, Offsets: {minAz} : {maxAz}.")
 
                 copyBurst = copy.deepcopy(topBurst)
                 ut.adjustValidSampleLine_V2(copyBurst, secBurst, minAz=minAz, maxAz=maxAz, minRng=minRg, maxRng=maxRg)

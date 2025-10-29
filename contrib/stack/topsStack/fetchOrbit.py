@@ -163,15 +163,18 @@ if __name__ == '__main__':
         match = None
 
         try:
-            r = session.get(url, verify=True, params={"$filter": query})
+            r = session.get(url, verify=True, params={"$filter": query, "$top":100})
+            print(r.url)
             r.raise_for_status()
 
             entries = json.loads(r.text, object_hook=lambda x: SimpleNamespace(**x)).value
-
             for entry in entries:
                 entry_datefmt = "%Y-%m-%dT%H:%M:%S.000000Z"
                 tbef = datetime.datetime.strptime(entry.ContentDate.Start, entry_datefmt)
                 taft = datetime.datetime.strptime(entry.ContentDate.End, entry_datefmt)
+                print(f"Bef: {tbef} and {fileTSStart}")
+                print(f"Aft: {taft} and {fileTS}")
+
                 if (tbef <= fileTSStart) and (taft >= fileTS):
                     matchFileName = entry.Name
                     match = entry.Id

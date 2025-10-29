@@ -154,6 +154,8 @@ def createParser():
     coreg.add_argument('-O','--num_overlap_connections', dest='num_overlap_connections', type=str, default = '3',
                        help='number of overlap interferograms between each date and subsequent dates used for NESD computation '
                             '(for azimuth offsets misregistration) (default: %(default)s).')
+    coreg.add_argument('--follow-ref', dest='follow_ref', action='store_true', default=False,
+                       help='Option to ensure burst consistency for extractCommonValidRegion with the referenc only  instead of across whole SLC stack (across secondaries).')
 
     # interferogram formation
     ifgram = parser.add_argument_group('Interferogram options', 'Configurations for interferogram generation')
@@ -703,7 +705,7 @@ def slcStack(inps, acquisitionDates, stackReferenceDate, secondaryDates, safe_di
     i+=1
     runObj = run()
     runObj.configure(inps, 'run_{:02d}_extract_stack_valid_region'.format(i))
-    runObj.extractStackValidRegion()
+    runObj.extractStackValidRegion(inps)
     runObj.finalize()
 
     if mergeSLC:

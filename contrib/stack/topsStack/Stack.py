@@ -919,10 +919,11 @@ class run(object):
         self.runf.write(self.text_cmd + 'invertMisreg.py -i ' + os.path.join(self.work_dir,'misreg/azimuth/pairs/') + ' -o ' + os.path.join(self.work_dir,'misreg/azimuth/dates/') + '\n')
         self.runf.write(self.text_cmd + 'invertMisreg.py -i ' + os.path.join(self.work_dir,'misreg/range/pairs/') + ' -o ' + os.path.join(self.work_dir,'misreg/range/dates/') + '\n')
 
-    def extractStackValidRegion(self):
+    def extractStackValidRegion(self, inps):
         referenceDir = os.path.join(self.work_dir, 'reference')
         coregSecondaryDir = os.path.join(self.work_dir, 'coreg_secondarys')
-        self.runf.write(self.text_cmd + 'extractCommonValidRegion.py -m ' + referenceDir + ' -s ' + coregSecondaryDir + '\n')
+        follow_ref=" --follow-ref" if inps.follow_ref else ""
+        self.runf.write(self.text_cmd + 'extractCommonValidRegion.py -m ' + referenceDir + ' -s ' + coregSecondaryDir + follow_ref+ '\n')
 
     def generate_burstIgram(self, dateList, safe_dict, pairs):
 

@@ -181,8 +181,7 @@ def adjustValidSampleLine_V2(reference, secondary, minAz=0, maxAz=0, minRng=0, m
 
 def adjustCommonValidRegion(reference,secondary):
     # valid lines between reference and secondary
-
-
+    print(f"Before: reference.firstValidLine:{reference.firstValidLine}, secondary.firstValidLine:{secondary.firstValidLine}, reference.numValidLines:{reference.numValidLines}, secondary.numValidLines:{secondary.numValidLines}")
     reference_lastValidLine = reference.firstValidLine + reference.numValidLines - 1
     reference_lastValidSample = reference.firstValidSample + reference.numValidSamples - 1
     secondary_lastValidLine = secondary.firstValidLine + secondary.numValidLines - 1
@@ -191,8 +190,14 @@ def adjustCommonValidRegion(reference,secondary):
     igram_lastValidLine = min(reference_lastValidLine, secondary_lastValidLine)
     igram_lastValidSample = min(reference_lastValidSample, secondary_lastValidSample)
 
-    reference.firstValidLine = max(reference.firstValidLine, secondary.firstValidLine)
-    reference.firstValidSample = max(reference.firstValidSample, secondary.firstValidSample)
+    #reference.firstValidLine = max(reference.firstValidLine, secondary.firstValidLine)
+    #reference.firstValidSample = max(reference.firstValidSample, secondary.firstValidSample)
+    # only adjust to sec bounds if burst azim offsets is within burst overlap range, this is to resolve issue in April-May 2025 of S1 acqs
+    if secondary.firstValidLine < 80:
+        reference.firstValidLine = max(reference.firstValidLine, secondary.firstValidLine)
+        reference.firstValidSample = max(reference.firstValidSample, secondary.firstValidSample)
+    else:
+        print(f"WARNING: Secondary burst {secondary.catalog['image']['file_name']} has large FirstValidLine / Offsets:{secondary.firstValidLine}, not adjusting reference to secondary")
 
     #set to 0 to avoid negative values
     if reference.firstValidLine<0:
@@ -202,6 +207,7 @@ def adjustCommonValidRegion(reference,secondary):
 
     reference.numValidLines = igram_lastValidLine - reference.firstValidLine + 1
     reference.numValidSamples = igram_lastValidSample - reference.firstValidSample + 1
+    print(f"After reference.firstValidLine:{reference.firstValidLine}, reference.numValidLines:{reference.numValidLines}")
 
 
 def getValidLines(secondary, rdict, inname, misreg_az=0.0, misreg_rng=0.0):
@@ -271,7 +277,7 @@ def getSwathList(indir):
 
     swathList = []
     for x in [1,2,3]:
-        SW = os.path.join(indir,'IW{0}'.format(x))
+        SW = os.path.join(indir,'IW{0}.xml'.format(x))
         if os.path.exists(SW):
             swathList.append(x)
 
