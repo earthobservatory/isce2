@@ -112,7 +112,7 @@ def runGeocode(inps, prodlist, bbox, demfilename, is_offset_mode=False):
 
     orb = getMergedOrbit(frames)
 
-    if bbox is None:
+    if not bbox:
         bboxes = []
 
         for frame in frames:
