@@ -72,10 +72,18 @@ class ALOS2(Component):
     facility_list = (TRACK,)
 
     # Range sampling rate
-    fsampConst = { 104: 1.047915957140240E+08,
-                   52: 5.239579785701190E+07,
-                   34: 3.493053190467460E+07,
-                   17: 1.746526595233730E+07 }
+    # ALOS-2/PALSAR-2: int(CEOS float [MHz]) → exact Hz
+    # ALOS-4/PALSAR-3: from FTR-240031A Table 4.7-1; CEOS stores ~98.24/49.12/32.75/16.37 MHz
+    #   → int() truncation gives keys 98/49/32/16 (NOT the ADC rates 166/83/55/28 MHz)
+    fsampConst = { 104: 1.047915957140240E+08,          # ALOS-2 SM1 (UB*)
+                   52:  5.239579785701190E+07,          # ALOS-2 SM2 (HB*)
+                   34:  3.493053190467460E+07,          # ALOS-2 SM3 (FB*)
+                   17:  1.746526595233730E+07,          # ALOS-2 ScanSAR (WB*)
+                   # ALOS-4 (PALSAR-3) — exact values per FTR-240031A Table 4.7-1
+                   98:  9.824218687500000E+07,          # SM1/UW* (98.2422 MHz stored)
+                   49:  4.912109343750000E+07,          # SM2/HW* (49.1211 MHz stored)
+                   32:  3.274739562500000E+07,          # SM3/FW* (32.7474 MHz stored)
+                   16:  1.637369781250000E+07 }         # ScanSAR/XW* (16.3737 MHz stored)
     # Orbital Elements (Quality) Designator, data format P68
     orbitElementsDesignator = {'0':'0: preliminary',
                                '1':'1: decision',
@@ -91,7 +99,20 @@ class ALOS2(Component):
                                '09': '09: ScanSAR wide mode',
                                '18': '18: Full (Quad.) pol./High-sensitive mode',
                                '19': '19: Full (Quad.) pol./Fine mode',
-                               '64': '64: Manual observation'}
+                               '64': '64: Manual observation',
+                               # ALOS-4 (PALSAR-3) 3-char filename mode codes
+                               # used by the filename-based override at line ~253
+                               'UWS': 'ALOS-4 SM1 single-pol HH',
+                               'UWD': 'ALOS-4 SM1 dual-pol HH+HV',
+                               'UWQ': 'ALOS-4 SM1 quad-pol',
+                               'HWS': 'ALOS-4 SM2 single-pol HH',
+                               'HWD': 'ALOS-4 SM2 dual-pol HH+HV',
+                               'HWQ': 'ALOS-4 SM2 quad-pol',
+                               'FWS': 'ALOS-4 SM3 single-pol HH',
+                               'FWD': 'ALOS-4 SM3 dual-pol HH+HV',
+                               'FWQ': 'ALOS-4 SM3 quad-pol',
+                               'XWS': 'ALOS-4 ScanSAR single-pol HH',
+                               'XWD': 'ALOS-4 ScanSAR dual-pol HH+HV'}
 
     def __init__(self, name=''):
         super().__init__(family=self.__class__.family, name=name) 
@@ -250,7 +271,15 @@ class ALOS2(Component):
                               ]
 
         #use this instead. 30-JAN-2020
-        track.operationMode = os.path.basename(self.leaderFile).split('-')[-1][0:3]
+        #ALOS-2: LED-ALOS2{orbit9d}-{YYMMDD}-{mode3c}R... → split('-')[-1][0:3] = mode ✓
+        #ALOS-4 Scene ID: ALOS4{path3}{frame4}{YYMMDD6}{mode3} (per FTR-240031A)
+        #  split('-')[1] = Scene ID field; mode at [5+3+4+6 : 18+3] = [18:21]
+        #  split('-')[-1] = '' (trailing dash) ✗
+        _ldr_base = os.path.basename(self.leaderFile)
+        if _ldr_base.startswith('LED-ALOS4'):
+            track.operationMode = _ldr_base.split('-')[1][18:21]
+        else:
+            track.operationMode = _ldr_base.split('-')[-1][0:3]
 
         #radarWavelength
         track.radarWavelength = sceneHeaderRecord.metadata['Radar wavelength']
@@ -288,7 +317,15 @@ class ALOS2(Component):
         frame = self.track.frames[-1]
 
         #get frame number from file name
-        frame.frameNumber = os.path.basename(self.imageFile).split('-')[2][-4:]
+        #ALOS-2: IMG-{pol}-ALOS2{orbit9d}-{YYMMDD}-... → split('-')[2][-4:]
+        #ALOS-4 Scene ID: ALOS4{path3}{frame4}{YYMMDD6}{mode3} (per FTR-240031A)
+        #  split('-')[2] = Scene ID field; frame at [5+3 : 5+3+4] = [8:12]  e.g. '2900'
+        #  split('-')[3] = Product ID (e.g. 'RD0107') = look+pass+beam — NOT frame
+        _img_base = os.path.basename(self.imageFile)
+        if _img_base.startswith('IMG-') and _img_base.split('-')[2].startswith('ALOS4'):
+            frame.frameNumber = _img_base.split('-')[2][8:12]   # e.g. '2900'
+        else:
+            frame.frameNumber = _img_base.split('-')[2][-4:]
         frame.processingFacility = sceneHeaderRecord.metadata['Processing facility identifier']
         frame.processingSystem = sceneHeaderRecord.metadata['Processing system identifier']
         frame.processingSoftwareVersion = sceneHeaderRecord.metadata['Processing version identifier']

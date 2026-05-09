@@ -1456,6 +1456,113 @@ modeProcParDict = {
                                       'numberAzimuthLooksIon': 32,
 
                                       'filterStdIon': 0.1
+                                     },
+                              # ---- ALOS-4 (PALSAR-3) modes ----
+                              # Mode naming: {res}{swath}{pol} where res=U/H/F/X, swath=W (wide), pol=S/D/Q
+                              # Processing parameters matched to equivalent ALOS-2 resolution class.
+                              #
+                              # SM1 / UW* (3 m stripmap, same incidence class as ALOS-2 UB*)
+                              'UWS': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 3,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 32,
+                                      'numberAzimuthLooksIon': 32,
+                                      'filterStdIon': 0.015
+                                     },
+                              'UWD': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 3,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 32,
+                                      'numberAzimuthLooksIon': 32,
+                                      'filterStdIon': 0.015
+                                     },
+                              'UWQ': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 3,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 32,
+                                      'numberAzimuthLooksIon': 32,
+                                      'filterStdIon': 0.015
+                                     },
+                              # SM2 / HW* (6 m stripmap, same incidence class as ALOS-2 HB*)
+                              'HWS': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 4,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 16,
+                                      'numberAzimuthLooksIon': 16,
+                                      'filterStdIon': 0.035
+                                     },
+                              'HWD': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 4,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 16,
+                                      'numberAzimuthLooksIon': 16,
+                                      'filterStdIon': 0.035
+                                     },
+                              'HWQ': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 4,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 16,
+                                      'numberAzimuthLooksIon': 16,
+                                      'filterStdIon': 0.035
+                                     },
+                              # SM3 / FW* (10 m stripmap, same incidence class as ALOS-2 FB*)
+                              'FWS': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 4,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 16,
+                                      'numberAzimuthLooksIon': 16,
+                                      'filterStdIon': 0.075
+                                     },
+                              'FWD': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 4,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 16,
+                                      'numberAzimuthLooksIon': 16,
+                                      'filterStdIon': 0.075
+                                     },
+                              'FWQ': {
+                                      'numberRangeLooks1': 2,
+                                      'numberAzimuthLooks1': 4,
+                                      'numberRangeLooks2': 4,
+                                      'numberAzimuthLooks2': 4,
+                                      'numberRangeLooksIon': 16,
+                                      'numberAzimuthLooksIon': 16,
+                                      'filterStdIon': 0.075
+                                     },
+                              # ScanSAR / XW* (same class as ALOS-2 WB*)
+                              'XWS': {
+                                      'numberRangeLooks1': 1,
+                                      'numberAzimuthLooks1': 14,
+                                      'numberRangeLooks2': 5,
+                                      'numberAzimuthLooks2': 2,
+                                      'numberRangeLooksIon': 80,
+                                      'numberAzimuthLooksIon': 32,
+                                      'filterStdIon': 0.1
+                                     },
+                              'XWD': {
+                                      'numberRangeLooks1': 1,
+                                      'numberAzimuthLooks1': 14,
+                                      'numberRangeLooks2': 5,
+                                      'numberAzimuthLooks2': 2,
+                                      'numberRangeLooksIon': 80,
+                                      'numberAzimuthLooksIon': 32,
+                                      'filterStdIon': 0.1
                                      }
                              }
                   }

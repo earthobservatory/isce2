@@ -19,6 +19,85 @@ from isceobj.Alos2Proc.Alos2ProcPublic import modeProcParDict
 
 logger = logging.getLogger('isce.alos2insar.runPreprocessor')
 
+
+# ---- ALOS-2 / ALOS-4 LED/IMG filename parsing helpers -----------------------
+#
+# ALOS-2 LED:  LED-ALOS2{orbit9d}-{YYMMDD}-{mode3c}...
+#   e.g.  LED-ALOS2211083630-180420-FBDR1.1__D
+# ALOS-4 LED:  LED-ALOS4{orbit7d}{YYMMDD}{mode3c}-{passdir2+frame4}-1.1__-
+#   e.g.  LED-ALOS41370060250228FWD-RA0107-1.1__-
+# ALOS-4 IMG:  IMG-{pol}-ALOS4{orbit7d}{YYMMDD}{mode3c}-{passdir2+frame4}-1.1__-
+#   e.g.  IMG-HH-ALOS41370060250228FWD-RA0107-1.1__-
+
+def _get_mode_from_led(led_base):
+    """Return the 3-character operation-mode code from a LED filename.
+
+    ALOS-4 Scene ID: ALOS4{path3}{frame4}{YYMMDD6}{mode3}
+      'ALOS4'=5 + path=3 + frame=4 + date=6 = 18 → mode at [18:21]
+    ALOS-2: last component of dash-separated name, first 3 chars.
+    """
+    if led_base.startswith('LED-ALOS4'):
+        return led_base.split('-')[1][18:21]
+    else:
+        return led_base.split('-')[-1][0:3]
+
+
+def _get_date_from_led(led_base):
+    """Return the YYMMDD date string from a LED filename.
+
+    ALOS-4 Scene ID: ALOS4{path3}{frame4}{YYMMDD6}{mode3}
+      date at [5+3+4 : 5+3+4+6] = [12:18]
+    ALOS-2: third dash-separated field.
+    """
+    if led_base.startswith('LED-ALOS4'):
+        return led_base.split('-')[1][12:18]
+    else:
+        return led_base.split('-')[2]
+
+
+def _get_frame_from_led(led_base):
+    """Return the 4-digit frame number string from a LED filename.
+
+    ALOS-4 Scene ID: ALOS4{path3}{frame4}{YYMMDD6}{mode3}
+      frame at [5+3 : 5+3+4] = [8:12]  e.g. '2900'
+      NOTE: split('-')[2] is the Product ID (e.g. 'RD0107') which encodes
+      look/pass/beam — NOT the frame number.
+    ALOS-2: last 4 chars of the orbit+frame sensor-id field.
+    """
+    if led_base.startswith('LED-ALOS4'):
+        return led_base.split('-')[1][8:12]
+    else:
+        return led_base.split('-')[1][-4:]
+
+
+def _get_led_files(data_dir, frame):
+    """Return sorted list of LED files for the given frame in data_dir.
+
+    ALOS-4: frame is embedded in the Scene ID as ALOS4{path3}{frame4}...
+      Use '???' wildcard for the 3-char path field, then literal frame.
+    """
+    alos2 = glob.glob(os.path.join(data_dir, 'LED-ALOS2*{}-*-*'.format(frame)))
+    alos4 = glob.glob(os.path.join(data_dir, 'LED-ALOS4???{}*'.format(frame)))
+    return sorted(alos2 + alos4)
+
+
+def _get_img_files(data_dir, pol, frame, swath=None):
+    """Return sorted list of IMG files for pol+frame (and optionally swath) in data_dir.
+
+    ALOS-4: frame embedded in Scene ID (ALOS4{path3}{frame4}...); use '???' for path.
+    For ScanSAR swath, ALOS-4 appends '-F{N}' or '-B{N}' at end of filename.
+    """
+    if swath is not None:
+        alos2 = glob.glob(os.path.join(data_dir, 'IMG-{}-ALOS2*{}-*-*-F{}'.format(pol, frame, swath)))
+        alos4 = glob.glob(os.path.join(data_dir, 'IMG-{}-ALOS4???{}*-F{}'.format(pol, frame, swath)))
+    else:
+        alos2 = glob.glob(os.path.join(data_dir, 'IMG-{}-ALOS2*{}-*-*'.format(pol, frame)))
+        alos4 = glob.glob(os.path.join(data_dir, 'IMG-{}-ALOS4???{}*'.format(pol, frame)))
+    return sorted(alos2 + alos4)
+
+# ------------------------------------------------------------------------------
+
+
 def runPreprocessor(self):
     '''Extract images.
     '''
@@ -31,26 +110,35 @@ def runPreprocessor(self):
     self.referenceDir = os.path.abspath(self.referenceDir)
     self.secondaryDir = os.path.abspath(self.secondaryDir)
 
-    ledFilesReference = sorted(glob.glob(os.path.join(self.referenceDir, 'LED-ALOS2*-*-*')))
-    imgFilesReference = sorted(glob.glob(os.path.join(self.referenceDir, 'IMG-{}-ALOS2*-*-*'.format(self.referencePolarization.upper()))))
+    ledFilesReference = sorted(glob.glob(os.path.join(self.referenceDir, 'LED-ALOS2*-*-*')) +
+                               glob.glob(os.path.join(self.referenceDir, 'LED-ALOS4*-*-*')))
+    imgFilesReference = sorted(glob.glob(os.path.join(self.referenceDir, 'IMG-{}-ALOS2*-*-*'.format(self.referencePolarization.upper()))) +
+                               glob.glob(os.path.join(self.referenceDir, 'IMG-{}-ALOS4*-*-*'.format(self.referencePolarization.upper()))))
 
-    ledFilesSecondary = sorted(glob.glob(os.path.join(self.secondaryDir, 'LED-ALOS2*-*-*')))
-    imgFilesSecondary = sorted(glob.glob(os.path.join(self.secondaryDir, 'IMG-{}-ALOS2*-*-*'.format(self.secondaryPolarization.upper()))))
+    ledFilesSecondary = sorted(glob.glob(os.path.join(self.secondaryDir, 'LED-ALOS2*-*-*')) +
+                               glob.glob(os.path.join(self.secondaryDir, 'LED-ALOS4*-*-*')))
+    imgFilesSecondary = sorted(glob.glob(os.path.join(self.secondaryDir, 'IMG-{}-ALOS2*-*-*'.format(self.secondaryPolarization.upper()))) +
+                               glob.glob(os.path.join(self.secondaryDir, 'IMG-{}-ALOS4*-*-*'.format(self.secondaryPolarization.upper()))))
 
-    firstFrameReference = ledFilesReference[0].split('-')[-3][-4:]
-    firstFrameSecondary = ledFilesSecondary[0].split('-')[-3][-4:]
-    firstFrameImagesReference = sorted(glob.glob(os.path.join(self.referenceDir, 'IMG-{}-ALOS2*{}-*-*'.format(self.referencePolarization.upper(), firstFrameReference))))
-    firstFrameImagesSecondary = sorted(glob.glob(os.path.join(self.secondaryDir, 'IMG-{}-ALOS2*{}-*-*'.format(self.secondaryPolarization.upper(), firstFrameSecondary))))
+    firstFrameReference = _get_frame_from_led(os.path.basename(ledFilesReference[0]))
+    firstFrameSecondary = _get_frame_from_led(os.path.basename(ledFilesSecondary[0]))
+    firstFrameImagesReference = _get_img_files(self.referenceDir, self.referencePolarization.upper(), firstFrameReference)
+    firstFrameImagesSecondary = _get_img_files(self.secondaryDir, self.secondaryPolarization.upper(), firstFrameSecondary)
 
 
     #determin operation mode
-    referenceMode = os.path.basename(ledFilesReference[0]).split('-')[-1][0:3]
-    secondaryMode = os.path.basename(ledFilesSecondary[0]).split('-')[-1][0:3]
+    referenceMode = _get_mode_from_led(os.path.basename(ledFilesReference[0]))
+    secondaryMode = _get_mode_from_led(os.path.basename(ledFilesSecondary[0]))
     spotlightModes = ['SBS']
-    stripmapModes = ['UBS', 'UBD', 'HBS', 'HBD', 'HBQ', 'FBS', 'FBD', 'FBQ']
-    scansarNominalModes = ['WBS', 'WBD', 'WWS', 'WWD']
+    stripmapModes = ['UBS', 'UBD', 'HBS', 'HBD', 'HBQ', 'FBS', 'FBD', 'FBQ',
+                     # ALOS-4 stripmap equivalents (U=SM1/3m, H=SM2/6m, F=SM3/10m, W=wide swath)
+                     'UWS', 'UWD', 'UWQ', 'HWS', 'HWD', 'HWQ', 'FWS', 'FWD', 'FWQ']
+    scansarNominalModes = ['WBS', 'WBD', 'WWS', 'WWD',
+                           # ALOS-4 ScanSAR (X=ScanSAR, W=wide)
+                           'XWS', 'XWD']
     scansarWideModes = ['VBS', 'VBD']
-    scansarModes = ['WBS', 'WBD', 'WWS', 'WWD', 'VBS', 'VBD']
+    scansarModes = ['WBS', 'WBD', 'WWS', 'WWD', 'VBS', 'VBD',
+                    'XWS', 'XWD']
 
     #usable combinations
     if (referenceMode in spotlightModes) and (secondaryMode in spotlightModes):
@@ -128,8 +216,8 @@ def runPreprocessor(self):
 
 
     #define processing file names
-    self._insar.referenceDate = os.path.basename(ledFilesReference[0]).split('-')[2]
-    self._insar.secondaryDate = os.path.basename(ledFilesSecondary[0]).split('-')[2]
+    self._insar.referenceDate = _get_date_from_led(os.path.basename(ledFilesReference[0]))
+    self._insar.secondaryDate = _get_date_from_led(os.path.basename(ledFilesSecondary[0]))
     self._insar.setFilename(referenceDate=self._insar.referenceDate, secondaryDate=self._insar.secondaryDate, nrlks1=self._insar.numberRangeLooks1, nalks1=self._insar.numberAzimuthLooks1, nrlks2=self._insar.numberRangeLooks2, nalks2=self._insar.numberAzimuthLooks2)
 
 
@@ -141,13 +229,13 @@ def runPreprocessor(self):
     if self.referenceFrames == None:
         self.referenceFrames = []
         for led in ledFilesReference:
-            frameNumber = os.path.basename(led).split('-')[1][-4:]
+            frameNumber = _get_frame_from_led(os.path.basename(led))
             if frameNumber not in self.referenceFrames:
                 self.referenceFrames.append(frameNumber)
     if self.secondaryFrames == None:
         self.secondaryFrames = []
         for led in ledFilesSecondary:
-            frameNumber = os.path.basename(led).split('-')[1][-4:]
+            frameNumber = _get_frame_from_led(os.path.basename(led))
             if frameNumber not in self.secondaryFrames:
                 self.secondaryFrames.append(frameNumber)
     #sort frames
@@ -238,11 +326,11 @@ def runPreprocessor(self):
             self.secondary.track.frames[-1].swaths.append(swathObjSecondary)
 
             #setup reference
-            self.reference.leaderFile = sorted(glob.glob(os.path.join(self.referenceDir, 'LED-ALOS2*{}-*-*'.format(referenceFrame))))[0]
+            self.reference.leaderFile = _get_led_files(self.referenceDir, referenceFrame)[0]
             if referenceMode in scansarModes:
-                self.reference.imageFile = sorted(glob.glob(os.path.join(self.referenceDir, 'IMG-{}-ALOS2*{}-*-*-F{}'.format(self.referencePolarization.upper(), referenceFrame, j))))[0]
+                self.reference.imageFile = _get_img_files(self.referenceDir, self.referencePolarization.upper(), referenceFrame, swath=j)[0]
             else:
-                self.reference.imageFile = sorted(glob.glob(os.path.join(self.referenceDir, 'IMG-{}-ALOS2*{}-*-*'.format(self.referencePolarization.upper(), referenceFrame))))[0]
+                self.reference.imageFile = _get_img_files(self.referenceDir, self.referencePolarization.upper(), referenceFrame)[0]
             self.reference.outputFile = self._insar.referenceSlc
             self.reference.useVirtualFile = self.useVirtualFile
             #read reference
@@ -253,11 +341,11 @@ def runPreprocessor(self):
             self.reference.setTrack(leaderFDR, sceneHeaderRecord, platformPositionRecord, facilityRecord, imageFDR, imageData)
 
             #setup secondary
-            self.secondary.leaderFile = sorted(glob.glob(os.path.join(self.secondaryDir, 'LED-ALOS2*{}-*-*'.format(secondaryFrame))))[0]
+            self.secondary.leaderFile = _get_led_files(self.secondaryDir, secondaryFrame)[0]
             if secondaryMode in scansarModes:
-                self.secondary.imageFile = sorted(glob.glob(os.path.join(self.secondaryDir, 'IMG-{}-ALOS2*{}-*-*-F{}'.format(self.secondaryPolarization.upper(), secondaryFrame, j))))[0]
+                self.secondary.imageFile = _get_img_files(self.secondaryDir, self.secondaryPolarization.upper(), secondaryFrame, swath=j)[0]
             else:
-                self.secondary.imageFile = sorted(glob.glob(os.path.join(self.secondaryDir, 'IMG-{}-ALOS2*{}-*-*'.format(self.secondaryPolarization.upper(), secondaryFrame))))[0]
+                self.secondary.imageFile = _get_img_files(self.secondaryDir, self.secondaryPolarization.upper(), secondaryFrame)[0]
             self.secondary.outputFile = self._insar.secondarySlc
             self.secondary.useVirtualFile = self.useVirtualFile
             #read secondary
@@ -308,10 +396,17 @@ def read_param_for_checking_overlap(leader_file, image_file):
     import isceobj.Sensor.CEOS as CEOS
 
     #read from leader file
-    fsampConst = { 104: 1.047915957140240E+08,
-                   52: 5.239579785701190E+07,
-                   34: 3.493053190467460E+07,
-                   17: 1.746526595233730E+07 }
+    # ALOS-4/PALSAR-3: from FTR-240031A Table 4.7-1; CEOS stores ~98.24/49.12/32.75/16.37 MHz
+    #   → int() truncation gives keys 98/49/32/16 (NOT the ADC rates 166/83/55/28 MHz)
+    fsampConst = { 104: 1.047915957140240E+08,          # ALOS-2 SM1 (UB*)
+                   52:  5.239579785701190E+07,          # ALOS-2 SM2 (HB*)
+                   34:  3.493053190467460E+07,          # ALOS-2 SM3 (FB*)
+                   17:  1.746526595233730E+07,          # ALOS-2 ScanSAR (WB*)
+                   # ALOS-4 (PALSAR-3) — exact values per FTR-240031A Table 4.7-1
+                   98:  9.824218687500000E+07,          # SM1/UW* (98.2422 MHz stored)
+                   49:  4.912109343750000E+07,          # SM2/HW* (49.1211 MHz stored)
+                   32:  3.274739562500000E+07,          # SM3/FW* (32.7474 MHz stored)
+                   16:  1.637369781250000E+07 }         # ScanSAR/XW* (16.3737 MHz stored)
 
     fp = open(leader_file,'rb')
     leaderFDR = CEOS.CEOSDB(xml=os.path.join(xmlPrefix,'alos2_slc/leader_file.xml'),dataFile=fp)

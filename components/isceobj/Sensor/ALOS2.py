@@ -92,7 +92,16 @@ class ALOS2(Sensor):
     fsampConst = { 104: 1.047915957140240E+08,
                    52: 5.239579785701190E+07,
                    34: 3.493053190467460E+07,
-                   17: 1.746526595233730E+07 }
+                   17: 1.746526595233730E+07,
+                   # ALOS-4 (PALSAR-3) sampling frequencies
+                   # SM1/UW* (3m stripmap): ~84 MHz chirp BW, ~166 MHz ADC
+                   166: 1.66270000000000E+08,
+                   # SM2/HW* (6m stripmap): ~42 MHz chirp BW, ~83 MHz ADC
+                   83: 8.31350000000000E+07,
+                   # SM3/FW* (10m stripmap): ~28 MHz chirp BW, ~55 MHz ADC
+                   55: 5.54300000000000E+07,
+                   # ScanSAR/XW*: ~14 MHz chirp BW, ~28 MHz ADC
+                   28: 2.77110000000000E+07 }
 
     #Orbital Elements (Quality) Designator
     #ALOS-2/PALSAR-2 Level 1.1/1.5/2.1/3.1 CEOS SAR Product Format Description
@@ -479,7 +488,9 @@ class ImageFile(object):
             self.writeRawData(output, IQLine)
 
         self.width = dataLen
-        prf2 =  (self.length-1) / (delta*1.0e-6)
+        # NOTE: prf2 derived from time-tag deltas is unreliable for ALOS-4 data
+        # which uses variable PRF (staggered SAR). Commented out per ALOS-4 processing notes.
+        # prf2 =  (self.length-1) / (delta*1.0e-6)
 #        print('TIME TAG PRF: ', prf2)
 #        print('LINE TAG PRF: ', prf1)
 
