@@ -355,7 +355,11 @@ if __name__ == '__main__':
                     ##########################################
                     #3. cull offsets
                     ##########################################
-                    refinedOffsets = cullOffsets(offsets)
+                    try:
+                        refinedOffsets = cullOffsets(offsets)
+                    except Exception as e:
+                        print('WARNING: cullOffsets raised an exception: {}. Defaulting to None.'.format(e))
+                        refinedOffsets = None
                     if refinedOffsets == None:
                         print('******************************************************************')
                         print('WARNING: There are not enough offsets left, so we are forced to')
