@@ -67,11 +67,24 @@ if __name__ == '__main__':
     self._insar.numberAzimuthLooks1 = numberAzimuthLooks1
 
     #read affine transform parameters
+    # Fallback identity transform used when radar_dem_offset.py (run02d) was
+    # not run or did not converge (affine file missing or contains 'None').
+    _IDENTITY = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+
+    if not os.path.isfile(aff):
+        raise FileNotFoundError('affine transform file not found: {}'.format(aff))
+
     with open(aff, 'r') as f:
         lines = f.readlines()
     self._insar.numberRangeLooksSim = int(lines[0].split()[0])
     self._insar.numberAzimuthLooksSim = int(lines[0].split()[1])
-    self._insar.radarDemAffineTransform = [float(x) for x in lines[1].strip('[').strip(']').split(',')]
+    aff_str = lines[1].strip() if len(lines) > 1 else 'None'
+    if aff_str == 'None':
+        print('WARNING: radarDemAffineTransform is None in {}. '
+              'Assuming identity transform (no rectification).'.format(aff))
+        self._insar.radarDemAffineTransform = _IDENTITY
+    else:
+        self._insar.radarDemAffineTransform = [float(x) for x in aff_str.strip('[').strip(']').split(',')]
     if DEBUG:
         print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
         print('{} {}\n{}'.format(self._insar.numberRangeLooksSim, self._insar.numberAzimuthLooksSim, self._insar.radarDemAffineTransform))
