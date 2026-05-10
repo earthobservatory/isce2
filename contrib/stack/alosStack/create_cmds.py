@@ -19,10 +19,6 @@ from StackPulic import loadStackUserParameters
 from StackPulic import loadInsarUserParameters
 from StackPulic import acquisitionModesAlos2
 from StackPulic import datesFromPairs
-from StackPulic import led_date as _led_date
-from StackPulic import led_mode as _led_mode
-from StackPulic import img_date as _img_date
-from StackPulic import img_mode as _img_mode
 
 
 def checkDem(fileName):
@@ -223,44 +219,24 @@ def stackRank(dates, pairs):
 def checkStackDataDir(idir):
     '''
     idir:          input directory where data of each date is located. only folders are recognized
-    Validates that all dates have consistent folder names and acquisition modes.
-    Supports ALOS-2 (LED-ALOS2* / IMG-HH-ALOS2*) and ALOS-4 (LED-ALOS4* / IMG-HH-ALOS4*).
     '''
+    stack.dataDir
 
     #get date folders
     dateDirs = sorted(glob.glob(os.path.join(os.path.abspath(idir), '*')))
     dateDirs = [x for x in dateDirs if os.path.isdir(x) and os.path.basename(x).isdigit()]
 
-    if not dateDirs:
-        return
-
-    # find reference mode from first image in first date folder
-    _first_imgs = (
-        sorted(glob.glob(os.path.join(dateDirs[0], 'IMG-HH-ALOS2*'))) +
-        [f for f in glob.glob(os.path.join(dateDirs[0], 'IMG-HH-ALOS4*'))
-         if not f.upper().endswith('.HDR')]
-    )
-    if not _first_imgs:
-        raise Exception('no IMG-HH files found in {}'.format(dateDirs[0]))
-    mode = _img_mode(os.path.basename(sorted(_first_imgs)[0]))
-
+    #check dates and acquisition mode
+    mode = os.path.basename(sorted(glob.glob(os.path.join(dateDirs[0], 'IMG-HH-ALOS2*')))[0]).split('-')[4][0:3]
     for x in dateDirs:
         dateFolder = os.path.basename(x)
-        images = sorted(
-            glob.glob(os.path.join(x, 'IMG-HH-ALOS2*')) +
-            [f for f in glob.glob(os.path.join(x, 'IMG-HH-ALOS4*'))
-             if not f.upper().endswith('.HDR')]
-        )
-        leaders = sorted(
-            glob.glob(os.path.join(x, 'LED-ALOS2*')) +
-            [f for f in glob.glob(os.path.join(x, 'LED-ALOS4*'))
-             if not f.upper().endswith('.HDR')]
-        )
+        images = sorted(glob.glob(os.path.join(x, 'IMG-HH-ALOS2*')))
+        leaders = sorted(glob.glob(os.path.join(x, 'LED-ALOS2*')))
         for y in images:
-            dateFile = _img_date(os.path.basename(y))
+            dateFile   = os.path.basename(y).split('-')[3]
             if dateFolder != dateFile:
                 raise Exception('date: {} in data folder name is different from date: {} in file name: {}'.format(dateFolder, dateFile, y))
-            ymode = _img_mode(os.path.basename(y))
+            ymode = os.path.basename(y).split('-')[4][0:3]
             if mode != ymode:
                 #currently only allows S or D polarization, Q should also be OK?
                 if (mode[0:2] == ymode[0:2]) and (mode[2] in ['S', 'D']) and (ymode[2] in ['S', 'D']):
@@ -269,12 +245,16 @@ def checkStackDataDir(idir):
                     raise Exception('all acquisition modes should be the same')
 
         for y in leaders:
-            dateFile = _led_date(os.path.basename(y))
+            dateFile   = os.path.basename(y).split('-')[2]
             if dateFolder != dateFile:
                 raise Exception('date: {} in data folder name is different from date: {} in file name: {}'.format(dateFolder, dateFile, y))
-            ymode = _led_mode(os.path.basename(y))
-            if mode[0:2] != ymode[0:2]:
-                raise Exception('all acquisition modes should be the same')
+            ymode = os.path.basename(y).split('-')[3][0:3]
+            if mode != ymode:
+                #currently only allows S or D polarization, Q should also be OK?
+                if (mode[0:2] == ymode[0:2]) and (mode[2] in ['S', 'D']) and (ymode[2] in ['S', 'D']):
+                    pass
+                else:
+                    raise Exception('all acquisition modes should be the same')
 
 
 def createCmds(stack, datesProcess, pairsProcess, pairsProcessIon, mode):
@@ -1426,19 +1406,8 @@ if __name__ == '__main__':
         datesProcess = datesProcess
 
 
-    #5. find acquisition mode (supports ALOS-2 and ALOS-4 filenames)
-    _led_candidates = (
-        sorted(glob.glob(os.path.join(stack.dataDir, datesProcess[0], 'LED-ALOS2*-*-*'))) +
-        [f for f in glob.glob(os.path.join(stack.dataDir, datesProcess[0], 'LED-ALOS4*'))
-         if not f.upper().endswith('.HDR')]
-    )
-    if not _led_candidates:
-        raise Exception('no LED files found in {}'.format(os.path.join(stack.dataDir, datesProcess[0])))
-    _led0 = os.path.basename(sorted(_led_candidates)[0])
-    if _led0.startswith('LED-ALOS4'):
-        mode = _led0.split('-')[1][18:21]   # ALOS-4: path3+frame4+date6+mode3 → [18:21]
-    else:
-        mode = _led0.split('-')[-1][0:3]    # ALOS-2: last dash-field, first 3 chars
+    #5. find acquisition mode
+    mode = os.path.basename(sorted(glob.glob(os.path.join(stack.dataDir, datesProcess[0], 'LED-ALOS2*-*-*')))[0]).split('-')[-1][0:3]
     print('acquisition mode of stack: {}'.format(mode))
     print('\n')
 

@@ -6,66 +6,6 @@
 #
 
 
-# ---------------------------------------------------------------------------
-# ALOS-2 / ALOS-4 filename helpers (string-only, no filesystem access)
-#
-# ALOS-2 LED: LED-ALOS2{orbit9d}-{frame4d}-{YYMMDD}-{mode3c}...
-# ALOS-4 LED: LED-ALOS4{path3d}{frame4d}{YYMMDD6}{mode3c}-{prodID}-...
-#   e.g.      LED-ALOS40182900250307UWD-RD0107-1.1__-
-#             split('-')[1] = 'ALOS40182900250307UWD'
-#               [5:8]  = path  '018'
-#               [8:12] = frame '2900'
-#               [12:18]= date  '250307'
-#               [18:21]= mode  'UWD'
-#
-# ALOS-2 IMG: IMG-{pol}-ALOS2{orbit9d}-{frame4d}-{YYMMDD}-{mode3c}...
-# ALOS-4 IMG: IMG-{pol}-ALOS4{path3}{frame4}{YYMMDD}{mode3}-{prodID}-...
-#   split('-')[2] = SceneID field (same layout as LED split('-')[1])
-# ---------------------------------------------------------------------------
-
-def led_date(led_base):
-    """Return YYMMDD date string from a bare LED filename (no path).
-    ALOS-2: LED-ALOS2{orbit}-{frame}-{YYMMDD}-{mode}... → split('-')[-2]
-    ALOS-4: LED-ALOS4{path3}{frame4}{YYMMDD}{mode3}-... → split('-')[1][12:18]
-    """
-    if led_base.startswith('LED-ALOS4'):
-        return led_base.split('-')[1][12:18]
-    else:
-        return led_base.split('-')[-2]
-
-
-def led_mode(led_base):
-    """Return 3-char mode string from a bare LED filename (no path)."""
-    if led_base.startswith('LED-ALOS4'):
-        return led_base.split('-')[1][18:21]
-    else:
-        return led_base.split('-')[-1][0:3]
-
-
-def led_frame(led_base):
-    """Return 4-char frame number string from a bare LED filename (no path)."""
-    if led_base.startswith('LED-ALOS4'):
-        return led_base.split('-')[1][8:12]
-    else:
-        return led_base.split('-')[-3][-4:]
-
-
-def img_date(img_base):
-    """Return YYMMDD date string from a bare IMG filename (no path)."""
-    if img_base.split('-')[2].startswith('ALOS4'):
-        return img_base.split('-')[2][12:18]
-    else:
-        return img_base.split('-')[4]
-
-
-def img_mode(img_base):
-    """Return 3-char mode string from a bare IMG filename (no path)."""
-    if img_base.split('-')[2].startswith('ALOS4'):
-        return img_base.split('-')[2][18:21]
-    else:
-        return img_base.split('-')[5][0:3]
-
-
 def loadInsarUserParameters(filename):
     import os
     from isce.applications.alos2App import Alos2InSAR
@@ -289,17 +229,14 @@ def stackDateStatistics(idir, dateReference):
 
 def acquisitionModesAlos2():
     '''
-    return ALOS-2 and ALOS-4 acquisition modes
-    ALOS-4 stripmap: UWS/UWD/UWQ (SM1), HWS/HWD/HWQ (SM2), FWS/FWD/FWQ (SM3)
-    ALOS-4 ScanSAR:  XWS/XWD (same nominal-swath class as ALOS-2 WB*)
+    return ALOS-2 acquisition mode
     '''
 
     spotlightModes = ['SBS']
-    stripmapModes = ['UBS', 'UBD', 'HBS', 'HBD', 'HBQ', 'FBS', 'FBD', 'FBQ',
-                     'UWS', 'UWD', 'UWQ', 'HWS', 'HWD', 'HWQ', 'FWS', 'FWD', 'FWQ']
-    scansarNominalModes = ['WBS', 'WBD', 'WWS', 'WWD', 'XWS', 'XWD']
+    stripmapModes = ['UBS', 'UBD', 'HBS', 'HBD', 'HBQ', 'FBS', 'FBD', 'FBQ']
+    scansarNominalModes = ['WBS', 'WBD', 'WWS', 'WWD']
     scansarWideModes = ['VBS', 'VBD']
-    scansarModes = ['WBS', 'WBD', 'WWS', 'WWD', 'VBS', 'VBD', 'XWS', 'XWD']
+    scansarModes = ['WBS', 'WBD', 'WWS', 'WWD', 'VBS', 'VBD']
 
     return (spotlightModes, stripmapModes, scansarNominalModes, scansarWideModes, scansarModes)
 

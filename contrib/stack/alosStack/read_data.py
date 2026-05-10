@@ -15,42 +15,6 @@ import isceobj.Sensor.MultiMode as MultiMode
 
 from StackPulic import saveProduct
 from StackPulic import acquisitionModesAlos2
-from StackPulic import led_date as _led_date
-from StackPulic import led_mode as _led_mode
-from StackPulic import led_frame as _led_frame
-
-
-# ---------------------------------------------------------------------------
-# Filesystem glob helpers (ALOS-2 + ALOS-4, .HDR sidecars excluded)
-# ---------------------------------------------------------------------------
-
-def _glob_led(data_dir, frame=None):
-    """Return sorted list of LED files in data_dir for ALOS-2 and ALOS-4.
-    Optionally filtered by frame (4-char string).
-    .HDR sidecar files are excluded automatically.
-    """
-    if frame is not None:
-        alos2 = glob.glob(os.path.join(data_dir, 'LED-ALOS2*{}-*-*'.format(frame)))
-        alos4 = glob.glob(os.path.join(data_dir, 'LED-ALOS4???{}*'.format(frame)))
-    else:
-        alos2 = glob.glob(os.path.join(data_dir, 'LED-ALOS2*-*-*'))
-        alos4 = [f for f in glob.glob(os.path.join(data_dir, 'LED-ALOS4*'))
-                 if not f.upper().endswith('.HDR')]
-    return sorted(alos2 + alos4)
-
-
-def _glob_img(data_dir, pol, frame, swath=None):
-    """Return sorted list of IMG files in data_dir for ALOS-2 and ALOS-4.
-    .HDR sidecar files are excluded automatically.
-    """
-    if swath is not None:
-        alos2 = glob.glob(os.path.join(data_dir, 'IMG-{}-ALOS2*{}-*-*-F{}'.format(pol, frame, swath)))
-        alos4 = glob.glob(os.path.join(data_dir, 'IMG-{}-ALOS4???{}*-F{}'.format(pol, frame, swath)))
-    else:
-        alos2 = glob.glob(os.path.join(data_dir, 'IMG-{}-ALOS2*{}-*-*'.format(pol, frame)))
-        alos4 = [f for f in glob.glob(os.path.join(data_dir, 'IMG-{}-ALOS4???{}*'.format(pol, frame)))
-                 if not f.upper().endswith('.HDR')]
-    return sorted(alos2 + alos4)
 
 
 def getAlos2StackDirs(dataDir):
@@ -65,16 +29,16 @@ def getAlos2StackDirs(dataDir):
     import glob
 
     def sorter(item):
-        # return YYMMDD date extracted from the LED basename
-        return _led_date(os.path.basename(item))
+        #return date
+        return item.split('-')[-2]
 
     #get only folders in dataDir
     dateDirs = sorted(glob.glob(os.path.join(dataDir, '*')))
     dateDirs = [x for x in dateDirs if os.path.isdir(x) and os.path.basename(x).isdigit()]
     ndate = len(dateDirs)
 
-    #get first LED files in dateDirs (supports both ALOS-2 and ALOS-4)
-    dateFirstleaderFiles = [_glob_led(x)[0] for x in dateDirs]
+    #get first LED files in dateDirs
+    dateFirstleaderFiles = [sorted(glob.glob(os.path.join(x, 'LED-ALOS2*-*-*')))[0] for x in dateDirs]
     #sort first LED files using date in LED file name
     dateFirstleaderFiles = sorted(dateFirstleaderFiles, key=sorter)
     #keep only directory from the path
@@ -151,8 +115,8 @@ if __name__ == '__main__':
     dates = []
     dateIndexReference = None
     for i in range(ndate):
-        ledFiles = _glob_led(dateDirs[i])
-        date = _led_date(os.path.basename(ledFiles[0]))
+        ledFiles = sorted(glob.glob(os.path.join(dateDirs[i], 'LED-ALOS2*-*-*')))
+        date = os.path.basename(ledFiles[0]).split('-')[-2]
         dates.append(date)
         if date == dateReference:
             dateIndexReference = i
@@ -164,8 +128,8 @@ if __name__ == '__main__':
     spotlightModes, stripmapModes, scansarNominalModes, scansarWideModes, scansarModes = acquisitionModesAlos2()
 
     #first frame of reference date
-    ledFilesReference = _glob_led(dateDirs[dateIndexReference])
-    modeReference = _led_mode(os.path.basename(ledFilesReference[0]))
+    ledFilesReference = sorted(glob.glob(os.path.join(dateDirs[dateIndexReference], 'LED-ALOS2*-*-*')))
+    modeReference = os.path.basename(ledFilesReference[0]).split('-')[-1][0:3]
 
     if modeReference in spotlightModes:
         modeGroupReference = spotlightModes
@@ -178,10 +142,10 @@ if __name__ == '__main__':
 
     #check aquistion mode of all frames of each date
     for i in range(ndate):
-        ledFiles = _glob_led(dateDirs[i])
+        ledFiles = sorted(glob.glob(os.path.join(dateDirs[i], 'LED-ALOS2*-*-*')))
         nframe = len(ledFiles)
         for j in range(nframe):
-            mode = _led_mode(os.path.basename(ledFiles[j]))
+            mode = os.path.basename(ledFiles[j]).split('-')[-1][0:3]
             if mode not in modeGroupReference:
                 raise Exception('all data must be in the same acquistion mode: spotlight, stripmap, or ScanSAR mode')
 
@@ -192,9 +156,9 @@ if __name__ == '__main__':
     if framesInput is None:
         for i in range(ndate):
             frames0 = []
-            ledFiles = _glob_led(dateDirs[i])
+            ledFiles = sorted(glob.glob(os.path.join(dateDirs[i], 'LED-ALOS2*-*-*')))
             for led in ledFiles:
-                frames0.append(_led_frame(os.path.basename(led)))
+                frames0.append(  os.path.basename(led).split('-')[-3][-4:]  )
             frames.append(sorted(frames0))
     else:
         for i in range(ndate):
@@ -252,8 +216,8 @@ if __name__ == '__main__':
 
     os.chdir(odir)
     for i in range(ndate):
-        ledFiles = _glob_led(dateDirs[i])
-        date = _led_date(os.path.basename(ledFiles[0]))
+        ledFiles = sorted(glob.glob(os.path.join(dateDirs[i], 'LED-ALOS2*-*-*')))
+        date = os.path.basename(ledFiles[0]).split('-')[-2]
         dateDir = date
 
         if dateSecondary != []:
@@ -295,12 +259,15 @@ if __name__ == '__main__':
                 swathObj.configure()
                 sensor.track.frames[-1].swaths.append(swathObj)
 
-                #setup sensor (supports ALOS-2 and ALOS-4 filenames)
-                sensor.leaderFile = _glob_led(dateDirs[i], frame=frames[i][j])[0]
+                #setup sensor
+                #sensor.leaderFile = sorted(glob.glob(os.path.join(dateDirs[i], 'LED-ALOS2*{}-*-*'.format(framesReference[j]))))[0]
+                sensor.leaderFile = sorted(glob.glob(os.path.join(dateDirs[i], 'LED-ALOS2*{}-*-*'.format(frames[i][j]))))[0]
                 if modeReference in scansarModes:
-                    sensor.imageFile = _glob_img(dateDirs[i], pol.upper(), frames[i][j], swath=k)[0]
+                    #sensor.imageFile = sorted(glob.glob(os.path.join(dateDirs[i], 'IMG-{}-ALOS2*{}-*-*-F{}'.format(pol.upper(), framesReference[j], k))))[0]
+                    sensor.imageFile = sorted(glob.glob(os.path.join(dateDirs[i], 'IMG-{}-ALOS2*{}-*-*-F{}'.format(pol.upper(), frames[i][j], k))))[0]
                 else:
-                    sensor.imageFile = _glob_img(dateDirs[i], pol.upper(), frames[i][j])[0]
+                    #sensor.imageFile = sorted(glob.glob(os.path.join(dateDirs[i], 'IMG-{}-ALOS2*{}-*-*'.format(pol.upper(), framesReference[j]))))[0]
+                    sensor.imageFile = sorted(glob.glob(os.path.join(dateDirs[i], 'IMG-{}-ALOS2*{}-*-*'.format(pol.upper(), frames[i][j]))))[0]
                 sensor.outputFile = date + '.slc'
                 sensor.useVirtualFile = useVirtualFile
                 #read sensor
