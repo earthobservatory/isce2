@@ -93,15 +93,13 @@ class ALOS2(Sensor):
                    52: 5.239579785701190E+07,
                    34: 3.493053190467460E+07,
                    17: 1.746526595233730E+07,
-                   # ALOS-4 (PALSAR-3) sampling frequencies
-                   # SM1/UW* (3m stripmap): ~84 MHz chirp BW, ~166 MHz ADC
-                   166: 1.66270000000000E+08,
-                   # SM2/HW* (6m stripmap): ~42 MHz chirp BW, ~83 MHz ADC
-                   83: 8.31350000000000E+07,
-                   # SM3/FW* (10m stripmap): ~28 MHz chirp BW, ~55 MHz ADC
-                   55: 5.54300000000000E+07,
-                   # ScanSAR/XW*: ~14 MHz chirp BW, ~28 MHz ADC
-                   28: 2.77110000000000E+07 }
+                   # ALOS-4 (PALSAR-3) — exact values per FTR-240031A Table 4.7-1
+                   # CEOS stores the baseband sampling rate (~98/49/32/16 MHz),
+                   # NOT the ADC rate (166/83/55/28 MHz). int() truncation gives keys below.
+                   98: 9.824218687500000E+07,   # SM1/UW* (98.2422 MHz stored)
+                   49: 4.912109343750000E+07,   # SM2/HW* (49.1211 MHz stored)
+                   32: 3.274739562500000E+07,   # SM3/FW* (32.7474 MHz stored)
+                   16: 1.637369781250000E+07 }  # ScanSAR/XW* (16.3737 MHz stored)
 
     #Orbital Elements (Quality) Designator
     #ALOS-2/PALSAR-2 Level 1.1/1.5/2.1/3.1 CEOS SAR Product Format Description
