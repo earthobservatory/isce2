@@ -486,9 +486,7 @@ class ImageFile(object):
             self.writeRawData(output, IQLine)
 
         self.width = dataLen
-        # NOTE: prf2 derived from time-tag deltas is unreliable for ALOS-4 data
-        # which uses variable PRF (staggered SAR). Commented out per ALOS-4 processing notes.
-        # prf2 =  (self.length-1) / (delta*1.0e-6)
+        prf2 =  (self.length-1) / (delta*1.0e-6)
 #        print('TIME TAG PRF: ', prf2)
 #        print('LINE TAG PRF: ', prf1)
 

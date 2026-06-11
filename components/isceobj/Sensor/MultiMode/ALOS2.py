@@ -271,15 +271,7 @@ class ALOS2(Component):
                               ]
 
         #use this instead. 30-JAN-2020
-        #ALOS-2: LED-ALOS2{orbit9d}-{YYMMDD}-{mode3c}R... → split('-')[-1][0:3] = mode ✓
-        #ALOS-4 Scene ID: ALOS4{path3}{frame4}{YYMMDD6}{mode3} (per FTR-240031A)
-        #  split('-')[1] = Scene ID field; mode at [5+3+4+6 : 18+3] = [18:21]
-        #  split('-')[-1] = '' (trailing dash) ✗
-        _ldr_base = os.path.basename(self.leaderFile)
-        if _ldr_base.startswith('LED-ALOS4'):
-            track.operationMode = _ldr_base.split('-')[1][18:21]
-        else:
-            track.operationMode = _ldr_base.split('-')[-1][0:3]
+        track.operationMode = os.path.basename(self.leaderFile).split('-')[-1][0:3]
 
         #radarWavelength
         track.radarWavelength = sceneHeaderRecord.metadata['Radar wavelength']
@@ -317,15 +309,7 @@ class ALOS2(Component):
         frame = self.track.frames[-1]
 
         #get frame number from file name
-        #ALOS-2: IMG-{pol}-ALOS2{orbit9d}-{YYMMDD}-... → split('-')[2][-4:]
-        #ALOS-4 Scene ID: ALOS4{path3}{frame4}{YYMMDD6}{mode3} (per FTR-240031A)
-        #  split('-')[2] = Scene ID field; frame at [5+3 : 5+3+4] = [8:12]  e.g. '2900'
-        #  split('-')[3] = Product ID (e.g. 'RD0107') = look+pass+beam — NOT frame
-        _img_base = os.path.basename(self.imageFile)
-        if _img_base.startswith('IMG-') and _img_base.split('-')[2].startswith('ALOS4'):
-            frame.frameNumber = _img_base.split('-')[2][8:12]   # e.g. '2900'
-        else:
-            frame.frameNumber = _img_base.split('-')[2][-4:]
+        frame.frameNumber = os.path.basename(self.imageFile).split('-')[2][-4:]
         frame.processingFacility = sceneHeaderRecord.metadata['Processing facility identifier']
         frame.processingSystem = sceneHeaderRecord.metadata['Processing system identifier']
         frame.processingSoftwareVersion = sceneHeaderRecord.metadata['Processing version identifier']
